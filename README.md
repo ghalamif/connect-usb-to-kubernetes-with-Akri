@@ -192,3 +192,4 @@ mkdir -p /mnt/usb
 mount -o ro /dev/sdb2 /mnt/usb
 ls -la /mnt/usb
 ```
+Minor tweak (14)
