@@ -2,15 +2,34 @@
 set -euo pipefail
 
 COUNT=16
+echo "==== FULL PR FARM STARTED ===="
+echo "Repo: $(basename $(pwd))"
+sleep 2
 
-echo "Starting realistic PR farm with $COUNT PRs..."
+# ------------------------------------------------------------
+# Cleanup old/broken branches
+# ------------------------------------------------------------
 
-# Ensure folders exist for realistic edits
-mkdir -p docs
-mkdir -p scripts
-mkdir -p config
+echo "Cleaning up broken branches..."
 
-# Define candidate files (they will be touched randomly)
+for b in pr-farm- pr-farm-1 pr-farm-2; do
+  if git show-ref --verify --quiet refs/heads/$b; then
+    git branch -D "$b" || true
+  fi
+  if git ls-remote --exit-code --heads origin $b >/dev/null 2>&1; then
+    git push origin --delete "$b" || true
+  fi
+done
+
+echo "Cleanup done."
+sleep 1
+
+# ------------------------------------------------------------
+# Create realistic file structure
+# ------------------------------------------------------------
+
+mkdir -p docs scripts config
+
 FILES=(
   "README.md"
   "LICENSE"
@@ -21,50 +40,92 @@ FILES=(
   "config/default.cfg"
 )
 
-# Create any missing files to make edits legal
 for f in "${FILES[@]}"; do
   if [ ! -f "$f" ]; then
-    echo "Auto-generated placeholder for $f" > "$f"
+    echo "Placeholder for $f" > "$f"
   fi
 done
 
-# Possible realistic line edits
 CHANGES=(
-  "Fix minor typo"
+  "Fix typo"
   "Improve formatting"
-  "Add small clarification"
-  "Update documentation line"
+  "Add clarification"
+  "Update docs"
   "Refine comment"
   "Whitespace cleanup"
-  "Minor fix"
-  "Tiny consistency tweak"
+  "Minor tweak"
   "Grammar improvement"
-  "Add missing newline"
+  "Add newline"
+  "Small refactor"
 )
 
+echo "Realistic files prepared."
+sleep 1
+
+# ------------------------------------------------------------
+# Generate branches + commits + push
+# ------------------------------------------------------------
+
+echo "Creating and pushing $COUNT branches..."
+
 for i in $(seq 1 $COUNT); do
-    BRANCH="pr-farm-$i"
+  BRANCH="pr-farm-$i"
+  FILE=${FILES[$RANDOM % ${#FILES[@]}]}
+  CHANGE=${CHANGES[$RANDOM % ${#CHANGES[@]}]}
 
-    git checkout main
-    git pull origin main
+  git checkout main
+  git pull origin main
+  git checkout -b "$BRANCH"
 
-    git checkout -b "$BRANCH"
+  echo "$CHANGE ($i)" >> "$FILE"
 
-    # Pick random file and random change
-    FILE=${FILES[$RANDOM % ${#FILES[@]}]}
-    CHANGE=${CHANGES[$RANDOM % ${#CHANGES[@]}]}
+  git add "$FILE"
+  git commit -m "$CHANGE in $FILE (#$i)"
+  git push origin "$BRANCH"
 
-    echo "$CHANGE ($i)" >> "$FILE"
+  echo "✓ Branch '$BRANCH' pushed. Waiting 5 seconds..."
+  sleep 5
+done
 
-    git add "$FILE"
-    git commit -m "$CHANGE in $FILE (#$i)"
-    git push origin "$BRANCH"
+echo "All branches created and pushed."
+sleep 2
 
-    echo ">>> Created PR branch '$BRANCH': modified $FILE"
-    echo ">>> Sleeping 5 seconds..."
-    sleep 5
+# ------------------------------------------------------------
+# Open PRs
+# ------------------------------------------------------------
+
+echo "Creating PRs via GitHub CLI..."
+
+for i in $(seq 1 $COUNT); do
+  BRANCH="pr-farm-$i"
+
+  gh pr create \
+    --base main \
+    --head "$BRANCH" \
+    --title "PR farm $i" \
+    --body "Automated realistic update $i"
+
+  echo "✓ PR for '$BRANCH' created. Waiting 3 seconds..."
+  sleep 3
+done
+
+echo "All PRs created."
+sleep 2
+
+# ------------------------------------------------------------
+# Merge PRs
+# ------------------------------------------------------------
+
+echo "Merging PRs..."
+
+for i in $(seq 1 $COUNT); do
+  BRANCH="pr-farm-$i"
+  gh pr merge "$BRANCH" --merge --delete-branch
+  echo "✓ Merged '$BRANCH'"
+  sleep 2
 done
 
 echo ""
-echo "All realistic PR branches created!"
-echo "Go to GitHub and merge them one by one."
+echo "==== ALL PRs MERGED SUCCESSFULLY ===="
+echo "You should now receive Pull Shark (Silver) 🦈"
+echo "======================================"
