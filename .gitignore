@@ -1,2 +1,5 @@
 Auto-generated placeholder for .gitignore
 Add clarification (4)
+
+# Ignore temp notes from PR 12
+notes/pr12.tmp
