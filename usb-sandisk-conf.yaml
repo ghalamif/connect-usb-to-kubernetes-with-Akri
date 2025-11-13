@@ -10,3 +10,5 @@ spec:
       udevRules:
       - ATTRS{idVendor}=="0781", ATTRS{idProduct}=="5567"
     name: udev
+
+# Added PR15 reminder for USB config
