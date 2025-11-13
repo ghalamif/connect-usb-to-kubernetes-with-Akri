@@ -20,3 +20,5 @@ spec:
         akri.sh/akri-sandisk-conf: "1"    
   restartPolicy: Never
  
+
+# Additional Akri USB note for PR16
